@@ -18,6 +18,7 @@
 #include "lldb/Host/FileSpec.h"
 #include "lldb/Symbol/Symtab.h"
 #include "lldb/Symbol/UnwindTable.h"
+#include "lldb/Symbol/UnwindPlan.h"
 #include "lldb/lldb-private.h"
 
 namespace lldb_private {
@@ -768,6 +769,11 @@ public:
   virtual std::string
   StripLinkerSymbolAnnotations(llvm::StringRef symbol_name) const {
     return symbol_name.str();
+  }
+
+  virtual lldb::UnwindPlanSP
+  GetUnwindPlan(lldb_private::AddressRange range, lldb::offset_t offset) {
+    return nullptr;
   }
 
   static lldb::SymbolType GetSymbolTypeFromName(

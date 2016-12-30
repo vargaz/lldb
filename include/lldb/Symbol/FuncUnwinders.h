@@ -90,6 +90,8 @@ public:
   // one
   // of the above UnwindPlan retrieval methods.
 
+  lldb::UnwindPlanSP GetObjectFileUnwindPlan(Target &target, int current_offset);
+
   lldb::UnwindPlanSP GetAssemblyUnwindPlan(Target &target, Thread &thread,
                                            int current_offset);
 

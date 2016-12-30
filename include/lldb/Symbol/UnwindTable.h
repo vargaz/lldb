@@ -54,6 +54,11 @@ public:
 
   bool GetArchitecture(lldb_private::ArchSpec &arch);
 
+  ObjectFile*
+  GetObjectFile () const {
+    return &m_object_file;
+  }
+
 private:
   void Dump(Stream &s);
 

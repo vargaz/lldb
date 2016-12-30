@@ -56,7 +56,11 @@ UnwindPlanSP FuncUnwinders::GetUnwindPlanAtCallSite(Target &target,
                                                     int current_offset) {
   std::lock_guard<std::recursive_mutex> guard(m_mutex);
 
-  UnwindPlanSP unwind_plan_sp = GetEHFrameUnwindPlan(target, current_offset);
+  UnwindPlanSP unwind_plan_sp = GetObjectFileUnwindPlan(target, current_offset);
+  if (unwind_plan_sp)
+    return unwind_plan_sp;
+
+  unwind_plan_sp = GetEHFrameUnwindPlan(target, current_offset);
   if (unwind_plan_sp)
     return unwind_plan_sp;
 
@@ -69,6 +73,13 @@ UnwindPlanSP FuncUnwinders::GetUnwindPlanAtCallSite(Target &target,
     return unwind_plan_sp;
 
   return nullptr;
+}
+
+UnwindPlanSP
+FuncUnwinders::GetObjectFileUnwindPlan(Target &target, int current_offset) {
+  ObjectFile *obj = m_unwind_table.GetObjectFile();
+
+  return obj->GetUnwindPlan(m_range, current_offset);
 }
 
 UnwindPlanSP FuncUnwinders::GetCompactUnwindUnwindPlan(Target &target,

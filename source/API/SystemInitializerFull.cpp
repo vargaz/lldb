@@ -89,6 +89,9 @@
 #include "Plugins/UnwindAssembly/InstEmulation/UnwindAssemblyInstEmulation.h"
 #include "Plugins/UnwindAssembly/x86/UnwindAssembly-x86.h"
 
+#include "Plugins/JITLoader/Mono/JITLoaderMono.h"
+#include "Plugins/ObjectFile/Mono/ObjectFileMono.h"
+
 #if defined(__APPLE__)
 #include "Plugins/DynamicLoader/Darwin-Kernel/DynamicLoaderDarwinKernel.h"
 #include "Plugins/Platform/MacOSX/PlatformAppleTVSimulator.h"
@@ -364,6 +367,9 @@ void SystemInitializerFull::Initialize() {
   DynamicLoaderPOSIXDYLD::Initialize();
   DynamicLoaderStatic::Initialize();
   DynamicLoaderWindowsDYLD::Initialize();
+
+  JITLoaderMono::Initialize();
+  ObjectFileMono::Initialize();
 
   // Scan for any system or user LLDB plug-ins
   PluginManager::Initialize();
