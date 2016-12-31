@@ -81,7 +81,7 @@ private:
     bool
     DidSetJITBreakpoint() const;
 
-    bool
+	void
     ReadJITDescriptor(bool all_entries);
 
     template <typename ptr_t>
@@ -93,6 +93,9 @@ private:
                           lldb_private::StoppointCallbackContext *context,
                           lldb::user_id_t break_id,
                           lldb::user_id_t break_loc_id);
+
+	void
+	ProcessEntry (uint32_t type, const lldb::addr_t addr, int64_t size);
 
     lldb::addr_t m_jit_descriptor_addr;
     lldb::user_id_t m_jit_break_id;

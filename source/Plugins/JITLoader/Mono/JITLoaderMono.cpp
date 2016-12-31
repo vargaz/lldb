@@ -143,7 +143,7 @@ JITLoaderMono::SetJITBreakpoint(lldb_private::ModuleList &module_list)
     bp->SetBreakpointKind("jit-debug-register");
     m_jit_break_id = bp->GetID();
 
-    ReadJITDescriptor(true);
+    ReadJITDescriptor (true);
 }
 
 bool
@@ -156,24 +156,25 @@ JITLoaderMono::JITDebugBreakpointHit(void *baton,
         log->Printf("JITLoaderMono::%s hit JIT breakpoint",
                     __FUNCTION__);
     JITLoaderMono *instance = static_cast<JITLoaderMono *>(baton);
-    instance->ReadJITDescriptor(false);
+    instance->ReadJITDescriptor (false);
 	// Continue running
 	return false;
 }
 
-bool
-JITLoaderMono::ReadJITDescriptor(bool all_entries)
+void
+JITLoaderMono::ReadJITDescriptor (bool all_entries)
 {
     Target &target = m_process->GetTarget();
     if (target.GetArchitecture().GetAddressByteSize() == 8)
-        return ReadJITDescriptorImpl<uint64_t>(all_entries);
+        ReadJITDescriptorImpl<uint64_t>(all_entries);
     else
-        return ReadJITDescriptorImpl<uint32_t>(all_entries);
+        ReadJITDescriptorImpl<uint32_t>(all_entries);
 }
 
 template <typename ptr_t>
 struct mono_debug_entry
 {
+	uint64_t next_addr;
 	uint32_t type;
     uint64_t size;
     ptr_t    addr;
@@ -184,6 +185,7 @@ struct mono_jit_descriptor
 {
     uint32_t version;
     ptr_t    entry;
+    ptr_t    all_entries;
 };
 
 typedef enum {
@@ -218,8 +220,6 @@ JITLoaderMono::ReadJITDescriptorImpl(bool all_entries)
         return false;
 
     Log *log(GetLogIfAnyCategoriesSet(LIBLLDB_LOG_JIT_LOADER));
-    Target &target = m_process->GetTarget();
-    ModuleList &module_list = target.GetImages();
 
     mono_jit_descriptor<ptr_t> jit_desc;
     const size_t jit_desc_size = sizeof(jit_desc);
@@ -242,30 +242,52 @@ JITLoaderMono::ReadJITDescriptorImpl(bool all_entries)
 		return false;
 	}
 
-    addr_t jit_relevant_entry = (addr_t)jit_desc.entry;
+    addr_t list;
+	if (all_entries)
+		list = (addr_t)jit_desc.all_entries;
+	else
+		list = (addr_t)jit_desc.entry;
 
-	mono_debug_entry<ptr_t> debug_entry;
-	const size_t debug_entry_size = sizeof(debug_entry);
-	bytes_read = m_process->DoReadMemory(jit_relevant_entry, &debug_entry, debug_entry_size, error);
-	if (bytes_read != debug_entry_size || !error.Success()) {
+	while (list) {
+		mono_debug_entry<ptr_t> debug_entry;
+		const size_t debug_entry_size = sizeof (debug_entry);
+		bytes_read = m_process->DoReadMemory (list, &debug_entry, debug_entry_size, error);
+		if (bytes_read != debug_entry_size || !error.Success()) {
+			if (log)
+				log->Printf(
+							"JITLoaderGDB::%s failed to read JIT entry at 0x%" PRIx64,
+							__FUNCTION__, list);
+			return false;
+		}
+
+		const addr_t &addr = (addr_t)debug_entry.addr;
+		const int64_t &size = (int64_t)debug_entry.size;
+
 		if (log)
 			log->Printf(
-						"JITLoaderGDB::%s failed to read JIT entry at 0x%" PRIx64,
-						__FUNCTION__, jit_relevant_entry);
-		return false;
-	}
-
-	const addr_t &addr = (addr_t)debug_entry.addr;
-	const int64_t &size = (int64_t)debug_entry.size;
-	ModuleSP module_sp;
-
-	if (log)
-		log->Printf(
-                    "JITLoaderMono::%s registering JIT entry %s at 0x%" PRIx64
-                    " (%" PRIu64 " bytes)",
+						"JITLoaderMono::%s registering JIT entry %s at 0x%" PRIx64
+						" (%" PRIu64 " bytes)",
                     __FUNCTION__, entry_type_to_str ((EntryType)debug_entry.type), addr, (uint64_t) size);
 
-	switch (debug_entry.type) {
+		ProcessEntry (debug_entry.type, addr, size);
+
+		list = debug_entry.next_addr;
+	}
+
+    return false;
+}
+
+void
+JITLoaderMono::ProcessEntry (uint32_t type, const addr_t addr, int64_t size)
+{
+	ModuleSP module_sp;
+
+    Target &target = m_process->GetTarget();
+    ModuleList &module_list = target.GetImages();
+
+    Log *log(GetLogIfAnyCategoriesSet(LIBLLDB_LOG_JIT_LOADER));
+
+	switch (type) {
 	case ENTRY_CODE_REGION:
 		//
 		// This entry defines a code region in the JIT.
@@ -302,44 +324,42 @@ JITLoaderMono::ReadJITDescriptorImpl(bool all_entries)
 		}
 		break;
 	case ENTRY_METHOD: {
-		uint8_t *buf = new uint8_t [debug_entry.size];
+		uint8_t *buf = new uint8_t [size];
 		Error error;
 
-		m_process->ReadMemory (debug_entry.addr, buf, debug_entry.size, error);
+		m_process->ReadMemory (addr, buf, size, error);
 		assert (!error.Fail ());
 
-		int region_id = ObjectFileMono::GetMethodEntryRegion(buf, debug_entry.size);
+		int region_id = ObjectFileMono::GetMethodEntryRegion(buf, size);
 
 		auto iter = m_regions.find (region_id);
 		assert (iter != m_regions.end ());
 		ObjectFileMono *ofile = (ObjectFileMono*)iter->second;
 
-		ofile->AddMethod (buf, debug_entry.size);
+		ofile->AddMethod (buf, size);
 		break;
 	}
 	case ENTRY_TRAMPOLINE: {
-		uint8_t *buf = new uint8_t [debug_entry.size];
+		uint8_t *buf = new uint8_t [size];
 		Error error;
 
-		m_process->ReadMemory (debug_entry.addr, buf, debug_entry.size, error);
+		m_process->ReadMemory (addr, buf, size, error);
 		assert (!error.Fail ());
 
-		int region_id = ObjectFileMono::GetTrampolineEntryRegion(buf, debug_entry.size);
+		int region_id = ObjectFileMono::GetTrampolineEntryRegion(buf, size);
 
 		auto iter = m_regions.find (region_id);
 		assert (iter != m_regions.end ());
 		ObjectFileMono *ofile = (ObjectFileMono*)iter->second;
 
-		ofile->AddTrampoline (buf, debug_entry.size);
+		ofile->AddTrampoline (buf, size);
 		break;
 	}
 	default:
 		if (log)
-			log->Printf("JITLoaderMono::%s unknown entry type %d", __FUNCTION__, debug_entry.type);
+			log->Printf("JITLoaderMono::%s unknown entry type %d", __FUNCTION__, type);
 		break;
 	}
-
-    return false;
 }
 
 //------------------------------------------------------------------
