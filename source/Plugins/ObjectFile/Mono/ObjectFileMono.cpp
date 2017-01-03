@@ -173,6 +173,7 @@ ObjectFileMono::ObjectFileMono (const lldb::ModuleSP &module_sp,
 								const lldb::ProcessSP &process_sp,
 								addr_t header_addr) :
     ObjectFile(module_sp, process_sp, header_addr, header_data_sp),
+	m_module (module_sp),
 	m_unwinders(),
     m_ranges(),
 	m_id(0)
@@ -254,6 +255,12 @@ int
 ObjectFileMono::GetId(void)
 {
 	return m_id;
+}
+
+lldb::ModuleSP
+ObjectFileMono::GetModule(void)
+{
+	return m_module;
 }
 
 typedef struct

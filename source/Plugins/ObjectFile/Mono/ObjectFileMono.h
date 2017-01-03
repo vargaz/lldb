@@ -167,6 +167,8 @@ public:
 
 	int	GetId (void);
 
+	lldb::ModuleSP GetModule (void);
+
     //------------------------------------------------------------------
     // PluginInterface protocol
     //------------------------------------------------------------------
@@ -177,6 +179,7 @@ public:
     GetPluginVersion() override;
 
 private:
+	lldb::ModuleSP m_module;
 	std::map<lldb::addr_t, lldb::UnwindPlanSP> m_unwinders;
 
     typedef lldb_private::RangeDataArray<lldb::addr_t, uint32_t, MonoMethodInfo*, 1> RangeToMethod;

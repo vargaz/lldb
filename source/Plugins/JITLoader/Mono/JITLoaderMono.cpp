@@ -34,6 +34,10 @@ using namespace lldb_private;
 // Mono plugin for lldb
 //
 
+typedef struct {
+	int id;
+} UnloadCodeRegionEntry;
+
 JITLoaderMono::JITLoaderMono (lldb_private::Process *process) :
     JITLoader(process),
     m_jit_descriptor_addr(LLDB_INVALID_ADDRESS),
@@ -192,6 +196,7 @@ typedef enum {
 	ENTRY_CODE_REGION = 1,
 	ENTRY_METHOD = 2,
 	ENTRY_TRAMPOLINE = 3,
+	ENTRY_UNLOAD_CODE_REGION = 4
 } EntryType;
 
 #define MAJOR_VERSION 1
@@ -207,6 +212,8 @@ entry_type_to_str (EntryType type)
 		return "method";
 	case ENTRY_TRAMPOLINE:
 		return "trampoline";
+	case ENTRY_UNLOAD_CODE_REGION:
+		return "unload-code-region";
 	default:
 		return "unknown";
 	}
@@ -308,12 +315,11 @@ JITLoaderMono::ProcessEntry (uint32_t type, const addr_t addr, int64_t size)
 
 			module_list.AppendIfNeeded(module_sp);
 
-			ModuleList module_list;
-			module_list.Append(module_sp);
-				
 			module_sp->SetLoadAddress(target, 0, true, changed);
 
-			target.ModulesDidLoad(module_list);
+			ModuleList mlist;
+			mlist.Append(module_sp);
+			target.ModulesDidLoad(mlist);
 
 			m_regions [ofile->GetId ()] = ofile;
 		} else {
@@ -323,6 +329,23 @@ JITLoaderMono::ProcessEntry (uint32_t type, const addr_t addr, int64_t size)
 							__FUNCTION__, addr);
 		}
 		break;
+	case ENTRY_UNLOAD_CODE_REGION: {
+		uint8_t *buf = new uint8_t [size];
+		Error error;
+		UnloadCodeRegionEntry *entry = (UnloadCodeRegionEntry*)buf;
+
+		m_process->ReadMemory (addr, buf, size, error);
+		assert (!error.Fail ());
+
+		auto iter = m_regions.find (entry->id);
+		assert (iter != m_regions.end ());
+		ObjectFileMono *ofile = (ObjectFileMono*)iter->second;
+
+		ModuleList mlist;
+		mlist.Append(ofile->GetModule ());
+		target.ModulesDidUnload(mlist, true);
+		break;
+	}
 	case ENTRY_METHOD: {
 		uint8_t *buf = new uint8_t [size];
 		Error error;
