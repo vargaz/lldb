@@ -78,8 +78,7 @@ decode_string (uint8_t *buf, uint8_t **endbuf, uint8_t *limit)
 		return NULL;
 	}
 
-	s = (char *)malloc (len + 1);
-	assert (s);
+	s = new char [len + 1];
 
 	memcpy (s, buf, len);
 	s [len] = '\0';
@@ -401,6 +400,7 @@ ObjectFileMono::AddMethod(void *buf, int size)
             0);              // Symbol flags.
 	int symbol_idx = m_symtab_ap->AddSymbol(symbol);
 	m_symtab_ap->SectionFileAddressesChanged ();
+	delete name;
 
 	AddUnwindPlan (m_unwinders, &symbol, info);
 
@@ -453,6 +453,7 @@ ObjectFileMono::AddTrampoline(void *buf, int size)
             0);              // Symbol flags.
 	m_symtab_ap->AddSymbol(symbol);
 	m_symtab_ap->SectionFileAddressesChanged ();
+	delete name;
 
 	AddUnwindPlan (m_unwinders, &symbol, info);
 }
