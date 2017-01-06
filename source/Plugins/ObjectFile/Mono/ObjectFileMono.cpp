@@ -310,6 +310,9 @@ AddUnwindPlan (std::map<lldb::addr_t, lldb::UnwindPlanSP> &m_unwinders, Symbol *
 			row->GetCFAValue ().SetIsRegisterPlusOffset (op->reg, cfa_offset);
 			cfa_reg = op->reg;
 			break;
+		case DW_CFA_same_value:
+			row->SetRegisterLocationToSame (op->reg, false);
+			break;
 		case DW_CFA_lo_user:
 		case DW_CFA_remember_state:
 		case DW_CFA_restore_state:
