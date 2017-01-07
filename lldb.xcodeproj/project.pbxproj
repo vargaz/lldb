@@ -753,6 +753,10 @@
 		4CF52AF8142829390051E832 /* SBFileSpecList.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4CF52AF7142829390051E832 /* SBFileSpecList.cpp */; };
 		600481641E15DF9400E8A423 /* ObjectFileMono.cpp in CopyFiles */ = {isa = PBXBuildFile; fileRef = 600481621E15DF9400E8A423 /* ObjectFileMono.cpp */; };
 		600481651E15DF9400E8A423 /* ObjectFileMono.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 600481631E15DF9400E8A423 /* ObjectFileMono.h */; };
+		608546F41E1F6F7200DE610E /* SymbolVendorMono.cpp in CopyFiles */ = {isa = PBXBuildFile; fileRef = 608546F21E1F6F7200DE610E /* SymbolVendorMono.cpp */; };
+		608546F51E1F6F7200DE610E /* SymbolVendorMono.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 608546F31E1F6F7200DE610E /* SymbolVendorMono.h */; };
+		608546F61E1F6F8200DE610E /* SymbolVendorMono.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 608546F21E1F6F7200DE610E /* SymbolVendorMono.cpp */; };
+		608546F71E1F6F8500DE610E /* SymbolVendorMono.h in Headers */ = {isa = PBXBuildFile; fileRef = 608546F31E1F6F7200DE610E /* SymbolVendorMono.h */; };
 		6099786D1E15DFE400C8DDF1 /* ObjectFileMono.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 600481621E15DF9400E8A423 /* ObjectFileMono.cpp */; };
 		60E2108A1CE913ED00573ED8 /* JITLoaderMono.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 60A615941CE90144003E5487 /* JITLoaderMono.cpp */; };
 		6D0F61431C80AAAE00A4ECEE /* JavaASTContext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6D0F61411C80AAAA00A4ECEE /* JavaASTContext.cpp */; };
@@ -1192,6 +1196,8 @@
 			files = (
 				AF90106515AB7D3600FF120D /* lldb.1 in CopyFiles */,
 				600481641E15DF9400E8A423 /* ObjectFileMono.cpp in CopyFiles */,
+				608546F51E1F6F7200DE610E /* SymbolVendorMono.h in CopyFiles */,
+				608546F41E1F6F7200DE610E /* SymbolVendorMono.cpp in CopyFiles */,
 				600481651E15DF9400E8A423 /* ObjectFileMono.h in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 1;
@@ -2585,6 +2591,8 @@
 		4CF52AF7142829390051E832 /* SBFileSpecList.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SBFileSpecList.cpp; path = source/API/SBFileSpecList.cpp; sourceTree = "<group>"; };
 		600481621E15DF9400E8A423 /* ObjectFileMono.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ObjectFileMono.cpp; path = Mono/ObjectFileMono.cpp; sourceTree = "<group>"; };
 		600481631E15DF9400E8A423 /* ObjectFileMono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ObjectFileMono.h; path = Mono/ObjectFileMono.h; sourceTree = "<group>"; };
+		608546F21E1F6F7200DE610E /* SymbolVendorMono.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SymbolVendorMono.cpp; path = Mono/SymbolVendorMono.cpp; sourceTree = "<group>"; };
+		608546F31E1F6F7200DE610E /* SymbolVendorMono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SymbolVendorMono.h; path = Mono/SymbolVendorMono.h; sourceTree = "<group>"; };
 		60A615941CE90144003E5487 /* JITLoaderMono.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = JITLoaderMono.cpp; path = Mono/JITLoaderMono.cpp; sourceTree = "<group>"; };
 		60A615981CE90165003E5487 /* JITLoaderMono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = JITLoaderMono.h; path = Mono/JITLoaderMono.h; sourceTree = "<group>"; };
 		69A01E1C1236C5D400C660B5 /* Host.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Host.cpp; sourceTree = "<group>"; };
@@ -3798,6 +3806,7 @@
 		260C89E010F57C5600BB2B04 /* SymbolVendor */ = {
 			isa = PBXGroup;
 			children = (
+				608546EF1E1F6F5300DE610E /* Mono */,
 				2635878D17822E56004C30BA /* ELF */,
 				260C89E110F57C5600BB2B04 /* MacOSX */,
 			);
@@ -5883,6 +5892,15 @@
 			name = Mono;
 			sourceTree = "<group>";
 		};
+		608546EF1E1F6F5300DE610E /* Mono */ = {
+			isa = PBXGroup;
+			children = (
+				608546F21E1F6F7200DE610E /* SymbolVendorMono.cpp */,
+				608546F31E1F6F7200DE610E /* SymbolVendorMono.h */,
+			);
+			name = Mono;
+			sourceTree = "<group>";
+		};
 		60A615971CE9014D003E5487 /* Mono */ = {
 			isa = PBXGroup;
 			children = (
@@ -6475,6 +6493,7 @@
 				238F2BA91D2C85FA001FF92A /* StructuredDataDarwinLog.h in Headers */,
 				AF8AD63A1BEC28C400150209 /* PlatformRemoteAppleWatch.h in Headers */,
 				257906651BD5AFD000178368 /* Acceptor.h in Headers */,
+				608546F71E1F6F8500DE610E /* SymbolVendorMono.h in Headers */,
 				238F2BA21D2C835A001FF92A /* SystemRuntime.h in Headers */,
 				260A63171861008E00FECF8E /* IOHandler.h in Headers */,
 				267F68581CC02EAE0086832B /* RegisterContextPOSIX_s390x.h in Headers */,
@@ -7491,6 +7510,7 @@
 				4CABA9E0134A8BCD00539BDD /* ValueObjectMemory.cpp in Sources */,
 				4CD0BD0F134BFADF00CB44D4 /* ValueObjectDynamicValue.cpp in Sources */,
 				946216C21A97C080006E19CC /* OptionValueLanguage.cpp in Sources */,
+				608546F61E1F6F8200DE610E /* SymbolVendorMono.cpp in Sources */,
 				AF45FDE518A1F3AC0007051C /* AppleGetThreadItemInfoHandler.cpp in Sources */,
 				2377C2F819E613C100737875 /* PipePosix.cpp in Sources */,
 				23E2E5441D904913006F38BB /* MinidumpParser.cpp in Sources */,

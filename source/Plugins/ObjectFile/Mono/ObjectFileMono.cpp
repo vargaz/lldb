@@ -374,10 +374,34 @@ ObjectFileMono::AddMethod(void *buf, int size)
 
     Log *log(GetLogIfAnyCategoriesSet(LIBLLDB_LOG_JIT_LOADER));
 
+	// Read entry
 	entry = (MethodEntry*)p;
 	p += sizeof (MethodEntry);
 	read_unwind_info (&info, p, &p, end);
 	name = decode_string (p, &p, end);
+	int nsrcfiles = decode_int (p, &p, end);
+	std::vector<std::string> srcfiles;
+	for (int i = 0; i < nsrcfiles; ++i) {
+		char *s = decode_string (p, &p, end);
+		srcfiles.push_back (std::string (s));
+		delete s;
+		// Skip guid
+		p += 16;
+	}
+	std::vector<MonoLineEntry> lines;
+	int nlines = decode_int (p, &p, end);
+	for (int i = 0; i < nlines; ++i) {
+		int native_offset = decode_int (p, &p, end);
+		int il_offset = decode_int (p, &p, end);
+		int line = decode_int (p, &p, end);
+		int file_idx = decode_int (p, &p, end);
+		int column = decode_int (p, &p, end);
+		int end_line = decode_int (p, &p, end);
+		int end_column = decode_int (p, &p, end);
+
+		if (native_offset != -1)
+			lines.push_back (MonoLineEntry (native_offset, il_offset, file_idx, line, column, end_line, end_column));
+	}
 	assert (p <= end);
 
 	if (log)
@@ -405,11 +429,12 @@ ObjectFileMono::AddMethod(void *buf, int size)
             0);              // Symbol flags.
 	int symbol_idx = m_symtab_ap->AddSymbol(symbol);
 	m_symtab_ap->SectionFileAddressesChanged ();
-	delete name;
 
 	AddUnwindPlan (m_unwinders, &symbol, info);
 
-	MonoMethodInfo *method = new MonoMethodInfo (entry->id, name, AddressRange (section, offset, entry->code_size), m_symtab_ap->SymbolAtIndex (symbol_idx));
+	MonoMethodInfo *method = new MonoMethodInfo (entry->id, name, AddressRange (section, offset, entry->code_size), m_symtab_ap->SymbolAtIndex (symbol_idx), nsrcfiles, lines);
+	method->m_srcfiles = srcfiles;
+	delete name;
 
 	m_ranges.Append(RangeToMethod::Entry ((addr_t)entry->code, entry->code_size, method));
 }

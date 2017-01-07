@@ -91,6 +91,7 @@
 
 #include "Plugins/JITLoader/Mono/JITLoaderMono.h"
 #include "Plugins/ObjectFile/Mono/ObjectFileMono.h"
+#include "Plugins/SymbolVendor/Mono/SymbolVendorMono.h"
 
 #if defined(__APPLE__)
 #include "Plugins/DynamicLoader/Darwin-Kernel/DynamicLoaderDarwinKernel.h"
@@ -370,6 +371,7 @@ void SystemInitializerFull::Initialize() {
 
   JITLoaderMono::Initialize();
   ObjectFileMono::Initialize();
+  SymbolVendorMono::Initialize();
 
   // Scan for any system or user LLDB plug-ins
   PluginManager::Initialize();
