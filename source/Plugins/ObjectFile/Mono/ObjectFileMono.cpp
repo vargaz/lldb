@@ -226,6 +226,7 @@ typedef struct {
 	int id;
 	int region_id;
 	int code_size;
+	int dummy;
 } MethodEntry;
 
 typedef struct {
@@ -233,6 +234,7 @@ typedef struct {
 	int id;
 	int region_id;
 	int code_size;
+	int dummy;
 } TrampolineEntry;
 
 int

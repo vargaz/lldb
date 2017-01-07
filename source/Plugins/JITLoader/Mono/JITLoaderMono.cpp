@@ -180,8 +180,9 @@ struct mono_debug_entry
 {
 	uint64_t next_addr;
 	uint32_t type;
+	uint32_t dummy;
     uint64_t size;
-    ptr_t    addr;
+    uint64_t addr;
 };
 
 template <typename ptr_t>
