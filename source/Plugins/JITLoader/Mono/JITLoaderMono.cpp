@@ -304,7 +304,7 @@ JITLoaderMono::ProcessEntry (uint32_t type, const addr_t addr, int64_t size)
 		// will create an ObjectFileMono object for it.
 		//
 		char jit_name[64];
-		snprintf(jit_name, 64, "JIT");
+		snprintf(jit_name, 64, "Mono");
 		module_sp = m_process->ReadModuleFromMemory(
 													FileSpec(jit_name, false), addr, size);
 
