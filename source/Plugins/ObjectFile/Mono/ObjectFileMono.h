@@ -185,6 +185,8 @@ public:
 
 	lldb::ModuleSP GetModule (void);
 
+	std::vector<MonoMethodInfo*> *GetMethods ();
+
     //------------------------------------------------------------------
     // PluginInterface protocol
     //------------------------------------------------------------------
@@ -201,6 +203,7 @@ private:
     typedef lldb_private::RangeDataArray<lldb::addr_t, uint32_t, MonoMethodInfo*, 1> RangeToMethod;
 	RangeToMethod m_ranges;
 	int m_id;
+	std::vector<MonoMethodInfo*> m_methods;
 };
 
 }

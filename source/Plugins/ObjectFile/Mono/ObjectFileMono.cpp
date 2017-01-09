@@ -175,7 +175,8 @@ ObjectFileMono::ObjectFileMono (const lldb::ModuleSP &module_sp,
 	m_module (module_sp),
 	m_unwinders(),
     m_ranges(),
-	m_id(0)
+	m_id(0),
+	m_methods()
 {
 }
 
@@ -370,8 +371,6 @@ ObjectFileMono::AddMethod(void *buf, int size)
 	char *name;
 	UnwindInfo info;
 
-	// FIXME: 32/64 bit
-
     Log *log(GetLogIfAnyCategoriesSet(LIBLLDB_LOG_JIT_LOADER));
 
 	// Read entry
@@ -412,9 +411,9 @@ ObjectFileMono::AddMethod(void *buf, int size)
 	auto section = GetSectionList (true)->GetSectionAtIndex (0);
 	int offset = (addr_t)entry->code - (addr_t)section->GetFileAddress ();
 
-	Symbol symbol(
+	Symbol *symbol = new Symbol (
             symbol_id,    // Symbol table index
-            name,     // symbol name.
+            strdup (name),     // symbol name.
             false,      // is the symbol name mangled?
             eSymbolTypeCode, // Type of this symbol
             false,           // Is this globally visible?
@@ -427,16 +426,17 @@ ObjectFileMono::AddMethod(void *buf, int size)
             true,            // Size is valid
             false,           // Contains linker annotations?
             0);              // Symbol flags.
-	int symbol_idx = m_symtab_ap->AddSymbol(symbol);
+	int symbol_idx = m_symtab_ap->AddSymbol(*symbol);
 	m_symtab_ap->SectionFileAddressesChanged ();
 
-	AddUnwindPlan (m_unwinders, &symbol, info);
+	AddUnwindPlan (m_unwinders, symbol, info);
 
 	MonoMethodInfo *method = new MonoMethodInfo (entry->id, name, AddressRange (section, offset, entry->code_size), m_symtab_ap->SymbolAtIndex (symbol_idx), nsrcfiles, lines);
 	method->m_srcfiles = srcfiles;
 	delete name;
 
 	m_ranges.Append(RangeToMethod::Entry ((addr_t)entry->code, entry->code_size, method));
+	m_methods.push_back (method);
 }
 
 void
@@ -447,8 +447,6 @@ ObjectFileMono::AddTrampoline(void *buf, int size)
 	TrampolineEntry *entry;
 	char *name;
 	UnwindInfo info;
-
-	// FIXME: 32/64 bit
 
     Log *log(GetLogIfAnyCategoriesSet(LIBLLDB_LOG_JIT_LOADER));
 
@@ -466,10 +464,10 @@ ObjectFileMono::AddTrampoline(void *buf, int size)
 	auto section = GetSectionList (true)->GetSectionAtIndex (0);
 	int offset = (addr_t)entry->code - (addr_t)section->GetFileAddress ();
 
-	Symbol symbol(
-            symbol_id,    // Symbol table index
-            name,     // symbol name.
-            false,      // is the symbol name mangled?
+	Symbol *symbol = new Symbol (
+            symbol_id,     // Symbol table index
+            strdup (name), // symbol name.
+            false,         // is the symbol name mangled?
             eSymbolTypeCode, // Type of this symbol
             false,           // Is this globally visible?
             false,           // Is this symbol debug info?
@@ -481,11 +479,12 @@ ObjectFileMono::AddTrampoline(void *buf, int size)
             true,            // Size is valid
             false,           // Contains linker annotations?
             0);              // Symbol flags.
-	m_symtab_ap->AddSymbol(symbol);
+
+	m_symtab_ap->AddSymbol(*symbol);
 	m_symtab_ap->SectionFileAddressesChanged ();
 	delete name;
 
-	AddUnwindPlan (m_unwinders, &symbol, info);
+	AddUnwindPlan (m_unwinders, symbol, info);
 }
 
 MonoMethodInfo*
@@ -497,6 +496,12 @@ ObjectFileMono::FindMethodByAddr (lldb::addr_t addr)
 		return entry->data;
 	else
 		return NULL;
+}
+
+std::vector<MonoMethodInfo*> *
+ObjectFileMono::GetMethods (void)
+{
+	return &m_methods;
 }
 
 Symtab *

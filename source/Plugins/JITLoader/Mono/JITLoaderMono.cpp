@@ -361,6 +361,11 @@ JITLoaderMono::ProcessEntry (uint32_t type, const addr_t addr, int64_t size)
 		ObjectFileMono *ofile = (ObjectFileMono*)iter->second;
 
 		ofile->AddMethod (buf, size);
+
+		// This is needed so breakpoints can be resolved
+		ModuleList mlist;
+		mlist.Append (ofile->GetModule ());
+		target.ModulesDidLoad (mlist);
 		break;
 	}
 	case ENTRY_TRAMPOLINE: {

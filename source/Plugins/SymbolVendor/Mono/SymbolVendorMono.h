@@ -47,6 +47,8 @@ public:
     virtual size_t
     GetNumCompileUnits();
 
+	virtual lldb::CompUnitSP GetCompileUnitAtIndex(size_t idx);
+
     virtual size_t
     FindFunctions (const ConstString &name,
                    const CompilerDeclContext *parent_decl_ctx,
@@ -83,9 +85,14 @@ public:
     GetPluginVersion();
 
 private:
-	CompileUnit *m_cu;
+	lldb::CompUnitSP m_cu;
+	int m_nadded_methods;
 
     DISALLOW_COPY_AND_ASSIGN (SymbolVendorMono);
+
+	void CreateCU (void);
+
+	void AddMethods (void);
 };
 
 }

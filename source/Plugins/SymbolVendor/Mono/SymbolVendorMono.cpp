@@ -33,7 +33,7 @@ using namespace lldb_private;
 // SymbolVendorMono constructor
 //----------------------------------------------------------------------
 SymbolVendorMono::SymbolVendorMono(const lldb::ModuleSP &module_sp) :
-    SymbolVendor (module_sp), m_cu (nullptr)
+    SymbolVendor (module_sp), m_cu (nullptr), m_nadded_methods (0)
 {
 }
 
@@ -93,134 +93,32 @@ SymbolVendorMono::CreateInstance (const lldb::ModuleSP &module_sp, lldb_private:
 	return symbol_vendor;
 }
 
-size_t
-SymbolVendorMono::GetNumCompileUnits()
+void
+SymbolVendorMono::CreateCU (void)
 {
-	return 0;
+	if (!m_cu) {
+		m_cu = CompUnitSP (new CompileUnit (GetModule (), NULL, "", 1, LanguageType::eLanguageTypeC, eLazyBoolNo));
+		m_cu->GetSupportFiles ();
+		m_cu->SetLineTable (new LineTable (m_cu.get ()));
+	}
 }
 
-size_t
-SymbolVendorMono::FindFunctions (const ConstString &name,
-                   const CompilerDeclContext *parent_decl_ctx,
-                   uint32_t name_type_mask,
-                   bool include_inlines,
-                   bool append,
-                   SymbolContextList& sc_list)
-{
-	return 0;
-}
-
-size_t
-SymbolVendorMono::FindFunctions (const RegularExpression& regex,
-								 bool include_inlines,
-								 bool append,
-								 SymbolContextList& sc_list)
-{
-	return 0;
-}
-
-struct Entry {
-    Entry()
-        : file_addr(LLDB_INVALID_ADDRESS), line(0), column(0), file_idx(0),
-          is_start_of_statement(false), is_start_of_basic_block(false),
-          is_prologue_end(false), is_epilogue_begin(false),
-          is_terminal_entry(false) {}
-
-    Entry(lldb::addr_t _file_addr, uint32_t _line, uint16_t _column,
-          uint16_t _file_idx, bool _is_start_of_statement,
-          bool _is_start_of_basic_block, bool _is_prologue_end,
-          bool _is_epilogue_begin, bool _is_terminal_entry)
-        : file_addr(_file_addr), line(_line), column(_column),
-          file_idx(_file_idx), is_start_of_statement(_is_start_of_statement),
-          is_start_of_basic_block(_is_start_of_basic_block),
-          is_prologue_end(_is_prologue_end),
-          is_epilogue_begin(_is_epilogue_begin),
-          is_terminal_entry(_is_terminal_entry) {}
-
-    int bsearch_compare(const void *key, const void *arrmem);
-
-    void Clear() {
-      file_addr = LLDB_INVALID_ADDRESS;
-      line = 0;
-      column = 0;
-      file_idx = 0;
-      is_start_of_statement = false;
-      is_start_of_basic_block = false;
-      is_prologue_end = false;
-      is_epilogue_begin = false;
-      is_terminal_entry = false;
-    }
-
-    static int Compare(const Entry &lhs, const Entry &rhs) {
-// Compare the sections before calling
-#define SCALAR_COMPARE(a, b)                                                   \
-  if (a < b)                                                                   \
-    return -1;                                                                 \
-  if (a > b)                                                                   \
-  return +1
-      SCALAR_COMPARE(lhs.file_addr, rhs.file_addr);
-      SCALAR_COMPARE(lhs.line, rhs.line);
-      SCALAR_COMPARE(lhs.column, rhs.column);
-      SCALAR_COMPARE(lhs.is_start_of_statement, rhs.is_start_of_statement);
-      SCALAR_COMPARE(lhs.is_start_of_basic_block, rhs.is_start_of_basic_block);
-      // rhs and lhs reversed on purpose below.
-      SCALAR_COMPARE(rhs.is_prologue_end, lhs.is_prologue_end);
-      SCALAR_COMPARE(lhs.is_epilogue_begin, rhs.is_epilogue_begin);
-      // rhs and lhs reversed on purpose below.
-      SCALAR_COMPARE(rhs.is_terminal_entry, lhs.is_terminal_entry);
-      SCALAR_COMPARE(lhs.file_idx, rhs.file_idx);
-#undef SCALAR_COMPARE
-      return 0;
-    }
-
-	  bool operator<(const Entry &b) {
-		  return Entry::Compare(*this, b) < 0;
-}
-    //------------------------------------------------------------------
-    // Member variables.
-    //------------------------------------------------------------------
-    lldb::addr_t file_addr; ///< The file address for this line entry
-    uint32_t line;   ///< The source line number, or zero if there is no line
-                     ///number information.
-    uint16_t column; ///< The column number of the source line, or zero if there
-                     ///is no column information.
-    uint16_t file_idx : 11, ///< The file index into CompileUnit's file table,
-                            ///or zero if there is no file information.
-        is_start_of_statement : 1, ///< Indicates this entry is the beginning of
-                                   ///a statement.
-        is_start_of_basic_block : 1, ///< Indicates this entry is the beginning
-                                     ///of a basic block.
-        is_prologue_end : 1, ///< Indicates this entry is one (of possibly many)
-                             ///where execution should be suspended for an entry
-                             ///breakpoint of a function.
-        is_epilogue_begin : 1, ///< Indicates this entry is one (of possibly
-                               ///many) where execution should be suspended for
-                               ///an exit breakpoint of a function.
-        is_terminal_entry : 1; ///< Indicates this entry is that of the first
-                               ///byte after the end of a sequence of target
-                               ///machine instructions.
-};
-
-uint32_t
-SymbolVendorMono::ResolveSymbolContext (const Address& so_addr,
-										uint32_t resolve_scope,
-										SymbolContext& sc)
+// Add newly registered methods to the CU
+void
+SymbolVendorMono::AddMethods (void)
 {
     ObjectFileMono *obj_file = (ObjectFileMono*)GetModule()->GetObjectFile();
 
-	MonoMethodInfo *method = obj_file->FindMethodByAddr (so_addr.GetFileAddress ());
-	if (!method)
-		return 0;
+	std::vector<MonoMethodInfo*> *methods = obj_file->GetMethods ();
+	if (methods->size () == m_nadded_methods)
+		return;
+	for (MonoMethodInfo *method : *methods) {
+		if (method->m_cu_added)
+			continue;
 
-	if (!m_cu) {
-		m_cu = new CompileUnit (GetModule (), NULL, "", 1, LanguageType::eLanguageTypeC, eLazyBoolNo);
-		m_cu->GetSupportFiles ();
-		m_cu->SetLineTable (new LineTable (m_cu));
-	}
-	//fprintf (stderr, "ResolveSymbolContext: %p\n", so_addr.GetFileAddress ());
+		m_nadded_methods ++;
 
-	if (!method->m_cu_added) {
-		//llvm::outs () << "A: " << method->m_name << "\n";
+		//llvm::outs () << "ADD: " << method->m_name << "\n";
 		method->m_cu_added = true;
 
 		//llvm::outs () << "B: " << method->m_range.GetBaseAddress ().GetFileAddress () << " " << method->m_range.GetByteSize () << "\n";
@@ -256,16 +154,71 @@ SymbolVendorMono::ResolveSymbolContext (const Address& so_addr,
 
 		table->InsertSequence (seq);
 	}
+}
+
+size_t
+SymbolVendorMono::GetNumCompileUnits(void)
+{
+	return 1;
+}
+
+lldb::CompUnitSP
+SymbolVendorMono::GetCompileUnitAtIndex(size_t idx)
+{
+	CreateCU ();
+	AddMethods ();
+
+	if (idx == 0)
+		return m_cu;
+	else
+		assert (0);
+}
+
+size_t
+SymbolVendorMono::FindFunctions (const ConstString &name,
+                   const CompilerDeclContext *parent_decl_ctx,
+                   uint32_t name_type_mask,
+                   bool include_inlines,
+                   bool append,
+                   SymbolContextList& sc_list)
+{
+	return 0;
+}
+
+size_t
+SymbolVendorMono::FindFunctions (const RegularExpression& regex,
+								 bool include_inlines,
+								 bool append,
+								 SymbolContextList& sc_list)
+{
+	return 0;
+}
+
+uint32_t
+SymbolVendorMono::ResolveSymbolContext (const Address& so_addr,
+										uint32_t resolve_scope,
+										SymbolContext& sc)
+{
+    ObjectFileMono *obj_file = (ObjectFileMono*)GetModule()->GetObjectFile();
+
+	MonoMethodInfo *method = obj_file->FindMethodByAddr (so_addr.GetFileAddress ());
+	if (!method)
+		return 0;
+
+	CreateCU ();
+	AddMethods ();
+
+	//fprintf (stderr, "ResolveSymbolContext: %p\n", so_addr.GetFileAddress ());
 
     uint32_t resolved = 0;
-	sc.comp_unit = m_cu;
-	resolved |= eSymbolContextCompUnit;
-#if 0
+	if (resolve_scope & eSymbolContextCompUnit) {
+		sc.comp_unit = m_cu.get ();
+		resolved |= eSymbolContextCompUnit;
+	}
 	if (resolve_scope & eSymbolContextSymbol) {
 		sc.symbol = method->m_symbol;
 		resolved |= eSymbolContextSymbol;
 	}
-#endif
 
 	if (resolve_scope & eSymbolContextLineEntry) {
 		LineTable *table = m_cu->GetLineTable ();
