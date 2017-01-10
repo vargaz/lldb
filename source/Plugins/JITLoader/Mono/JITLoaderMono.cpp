@@ -189,6 +189,7 @@ template <typename ptr_t>
 struct mono_jit_descriptor
 {
     uint32_t version;
+    uint32_t dummy;
     ptr_t    entry;
     ptr_t    all_entries;
 };

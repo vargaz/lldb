@@ -215,10 +215,12 @@ SymbolVendorMono::ResolveSymbolContext (const Address& so_addr,
 		sc.comp_unit = m_cu.get ();
 		resolved |= eSymbolContextCompUnit;
 	}
+#if 0
 	if (resolve_scope & eSymbolContextSymbol) {
 		sc.symbol = method->m_symbol;
 		resolved |= eSymbolContextSymbol;
 	}
+#endif
 
 	if (resolve_scope & eSymbolContextLineEntry) {
 		LineTable *table = m_cu->GetLineTable ();
