@@ -192,6 +192,10 @@ struct mono_jit_descriptor
     uint32_t dummy;
     ptr_t    entry;
     ptr_t    all_entries;
+    uint32_t type;
+    uint32_t dummy2;
+    uint64_t size;
+    uint64_t addr;
 };
 
 typedef enum {
@@ -251,23 +255,40 @@ JITLoaderMono::ReadJITDescriptorImpl(bool all_entries)
 		return false;
 	}
 
-    addr_t list;
-	if (all_entries)
-		list = (addr_t)jit_desc.all_entries;
-	else
-		list = (addr_t)jit_desc.entry;
+	if (all_entries) {
+		addr_t list = (addr_t)jit_desc.all_entries;
+		while (list) {
+			mono_debug_entry<ptr_t> debug_entry;
+			const size_t debug_entry_size = sizeof (debug_entry);
+			bytes_read = m_process->DoReadMemory (list, &debug_entry, debug_entry_size, error);
+			if (bytes_read != debug_entry_size || !error.Success()) {
+				if (log)
+					log->Printf(
+								"JITLoaderGDB::%s failed to read JIT entry at 0x%" PRIx64,
+								__FUNCTION__, list);
+				return false;
+			}
 
-	while (list) {
-		mono_debug_entry<ptr_t> debug_entry;
-		const size_t debug_entry_size = sizeof (debug_entry);
-		bytes_read = m_process->DoReadMemory (list, &debug_entry, debug_entry_size, error);
-		if (bytes_read != debug_entry_size || !error.Success()) {
+			const addr_t &addr = (addr_t)debug_entry.addr;
+			const int64_t &size = (int64_t)debug_entry.size;
+
 			if (log)
 				log->Printf(
-							"JITLoaderGDB::%s failed to read JIT entry at 0x%" PRIx64,
-							__FUNCTION__, list);
-			return false;
+							"JITLoaderMono::%s registering JIT entry %s at 0x%" PRIx64
+							" (%" PRIu64 " bytes)",
+							__FUNCTION__, entry_type_to_str ((EntryType)debug_entry.type), addr, (uint64_t) size);
+
+			ProcessEntry (debug_entry.type, addr, size);
+
+			list = debug_entry.next_addr;
 		}
+	} else {
+		// Embedded into the JIT descriptor structure to save roundtrips
+		mono_debug_entry<ptr_t> debug_entry;
+
+		debug_entry.type = jit_desc.type;
+		debug_entry.addr = jit_desc.addr;
+		debug_entry.size = jit_desc.size;
 
 		const addr_t &addr = (addr_t)debug_entry.addr;
 		const int64_t &size = (int64_t)debug_entry.size;
@@ -276,11 +297,9 @@ JITLoaderMono::ReadJITDescriptorImpl(bool all_entries)
 			log->Printf(
 						"JITLoaderMono::%s registering JIT entry %s at 0x%" PRIx64
 						" (%" PRIu64 " bytes)",
-                    __FUNCTION__, entry_type_to_str ((EntryType)debug_entry.type), addr, (uint64_t) size);
+						__FUNCTION__, entry_type_to_str ((EntryType)debug_entry.type), addr, (uint64_t) size);
 
 		ProcessEntry (debug_entry.type, addr, size);
-
-		list = debug_entry.next_addr;
 	}
 
     return false;
